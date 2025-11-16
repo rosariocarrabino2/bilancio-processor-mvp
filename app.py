@@ -37,12 +37,19 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def extract_bilancio_from_pdf(pdf_path):
-    """Estrae dati dal PDF - versione robusta"""
+    """Estrae dati dal PDF - versione robusta con filtri corretti"""
     data = []
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
+            # FILTRO: Escludi ultime 2 pagine (sezione fiscale)
+            num_pages = len(pdf.pages)
+            pages_to_process = max(1, num_pages - 2)
+            
+            for page_idx, page in enumerate(pdf.pages):
+                if page_idx >= pages_to_process:
+                    break
+                    
                 # Prova prima con le tabelle
                 tables = page.extract_tables()
                 if tables:
@@ -51,61 +58,105 @@ def extract_bilancio_from_pdf(pdf_path):
                             if not row or len(row) < 2:
                                 continue
                             
-                            # Cerca valori numerici nella riga
+                            # Unisci tutte le celle per analisi
+                            row_text = ' '.join([str(cell) for cell in row if cell])
+                            
+                            # FILTRO: Escludi righe con asterischi (totali) TRANNE il conto fornitori speciale
+                            if '*' in row_text:
+                                # Eccezione: 40/******** DEBITI V/FORNITORI va incluso
+                                if not ('40/' in row_text and 'FORN' in row_text.upper()):
+                                    continue
+                            
+                            # Cerca codice conto nel formato XX/XXXX/XXXX o XX/XXXX o XX/********
+                            code_match = re.search(r'(\d{2}/[\d*]{4,8}(?:/[\d*]{4})?)', row_text)
+                            if not code_match:
+                                continue
+                                
+                            code = code_match.group(1)
+                            
+                            # Cerca valori numerici
                             amounts = []
                             for cell in row:
                                 if cell:
-                                    # Cerca numeri con separatori
                                     matches = re.findall(r'[\d.,]+', str(cell))
                                     for match in matches:
-                                        try:
-                                            # Prova a convertire in numero
-                                            if ',' in match and '.' in match:
-                                                # Formato italiano: 1.234,56
-                                                num = float(match.replace('.', '').replace(',', '.'))
-                                            elif ',' in match:
-                                                # Formato italiano: 1234,56
-                                                num = float(match.replace(',', '.'))
-                                            else:
-                                                # Formato standard: 1234.56
-                                                num = float(match.replace(',', ''))
-                                            
-                                            if abs(num) > 0.01:  # Ignora valori troppo piccoli
-                                                amounts.append(num)
-                                        except:
-                                            continue
+                                        if len(match) > 2:  # Evita codici come "03"
+                                            try:
+                                                if ',' in match and '.' in match:
+                                                    num = float(match.replace('.', '').replace(',', '.'))
+                                                elif ',' in match:
+                                                    num = float(match.replace(',', '.'))
+                                                else:
+                                                    num = float(match)
+                                                
+                                                if abs(num) > 0.01:
+                                                    amounts.append(num)
+                                            except:
+                                                continue
                             
-                            if amounts:
-                                # Prendi il primo elemento come codice/descrizione
-                                first_cell = str(row[0]) if row[0] else ''
-                                
-                                # Cerca codice conto (numeri all'inizio)
-                                code_match = re.match(r'^(\d+)', first_cell)
-                                code = code_match.group(1) if code_match else ''
-                                
-                                # Descrizione
-                                if code:
-                                    description = first_cell[len(code):].strip()
+                            if not amounts:
+                                continue
+                            
+                            # Estrai descrizione (tutto tra codice e importi)
+                            code_pos = row_text.find(code)
+                            desc_start = code_pos + len(code)
+                            desc_text = row_text[desc_start:].strip()
+                            
+                            # Rimuovi numeri alla fine per ottenere solo descrizione
+                            desc_text = re.sub(r'[\d.,\s]+$', '', desc_text).strip()
+                            
+                            if not desc_text or len(desc_text) < 3:
+                                continue
+                            
+                            # Determina tipo e segno
+                            first_digits = code.split('/')[0]
+                            tipo = 'Stato Patrimoniale'
+                            segno = 1
+                            
+                            if first_digits in ['50', '51', '52', '53', '54', '55', '56', '57', '58', '59',
+                                               '60', '61', '62', '63', '64', '65', '66', '67', '68', '69',
+                                               '70', '71', '72', '73', '74', '75', '76', '77', '78', '79',
+                                               '80', '81', '82', '83', '84', '85', '86', '87', '88', '89',
+                                               '90', '91', '92', '93', '94', '95', '96', '97', '98', '99']:
+                                tipo = 'Conto Economico'
+                            
+                            # GESTIONE SEGNI:
+                            # - SP: Attività (+), Passività e Fondi Amm (-), Patrimonio Netto (-)
+                            # - CE: Ricavi (+), Costi (-)
+                            
+                            # Determina se è nella colonna Passività/Ricavi (seconda colonna importi)
+                            is_passivita = len(amounts) > 1  # Se ci sono 2 importi, il secondo è passività
+                            
+                            if tipo == 'Stato Patrimoniale':
+                                # Fondi ammortamento (04, 07) sono sempre negativi
+                                if first_digits in ['04', '07']:
+                                    segno = -1
+                                # Patrimonio Netto (28, 29) sempre negativo
+                                elif first_digits in ['28', '29']:
+                                    segno = -1
+                                # Passività (40, 41, 42, 43, 48, 49) sempre negative
+                                elif first_digits in ['40', '41', '42', '43', '48', '49']:
+                                    segno = -1
+                                # Attività positive
                                 else:
-                                    description = ' '.join([str(cell) for cell in row[:-1] if cell]).strip()
-                                
-                                # Determina tipo (SP/CE) basato sul codice
-                                tipo = 'Stato Patrimoniale'
-                                if code:
-                                    first_digit = code[0]
-                                    if first_digit in ['5', '6', '7', '8', '9']:
-                                        tipo = 'Conto Economico'
-                                
-                                # Usa l'ultimo importo trovato
-                                amount = amounts[-1]
-                                
-                                if description or code:
-                                    data.append({
-                                        'Codice': code,
-                                        'Descrizione': description[:100],  # Limita lunghezza
-                                        'Tipo': tipo,
-                                        'Amount': amount
-                                    })
+                                    segno = 1
+                            else:  # Conto Economico
+                                # Ricavi (80-89, 90-99) positivi
+                                if int(first_digits) >= 80:
+                                    segno = 1
+                                # Costi (50-79) negativi
+                                else:
+                                    segno = -1
+                            
+                            # Usa l'ultimo importo trovato
+                            amount = amounts[-1] * segno
+                            
+                            data.append({
+                                'Codice': code,
+                                'Descrizione': desc_text[:100],
+                                'Tipo': tipo,
+                                'Amount': amount
+                            })
                 
                 # Se non ci sono tabelle, prova con il testo
                 if not tables:
@@ -115,17 +166,31 @@ def extract_bilancio_from_pdf(pdf_path):
                         
                         for line in lines:
                             line = line.strip()
-                            if len(line) < 5:
+                            if len(line) < 10:
                                 continue
                             
-                            # Cerca importi nella riga
+                            # FILTRO: Escludi righe con asterischi (totali) TRANNE fornitori
+                            if '*' in line:
+                                if not ('40/' in line and 'FORN' in line.upper()):
+                                    continue
+                            
+                            # Cerca codice conto
+                            code_match = re.search(r'(\d{2}/[\d*]{4,8}(?:/[\d*]{4})?)', line)
+                            if not code_match:
+                                continue
+                                
+                            code = code_match.group(1)
+                            
+                            # Cerca importi
                             amounts = []
                             amount_matches = re.finditer(r'([\d.,]+)', line)
                             
                             for match in amount_matches:
                                 try:
                                     amount_str = match.group(1)
-                                    # Conversione tollerante
+                                    if len(amount_str) < 3:  # Evita codici
+                                        continue
+                                        
                                     if ',' in amount_str and '.' in amount_str:
                                         num = float(amount_str.replace('.', '').replace(',', '.'))
                                     elif ',' in amount_str:
@@ -134,46 +199,67 @@ def extract_bilancio_from_pdf(pdf_path):
                                         num = float(amount_str)
                                     
                                     if abs(num) > 0.01:
-                                        amounts.append((num, match.start()))
+                                        amounts.append(num)
                                 except:
                                     continue
                             
-                            if amounts:
-                                # Prendi l'ultimo importo
-                                amount, pos = amounts[-1]
-                                
-                                # Tutto prima dell'importo è codice + descrizione
-                                text_part = line[:pos].strip()
-                                
-                                # Cerca codice
-                                code_match = re.match(r'^(\d+)', text_part)
-                                code = code_match.group(1) if code_match else ''
-                                
-                                # Descrizione
-                                if code:
-                                    description = text_part[len(code):].strip()
-                                else:
-                                    description = text_part
-                                
-                                # Determina tipo
-                                tipo = 'Stato Patrimoniale'
-                                if code and code[0] in ['5', '6', '7', '8', '9']:
-                                    tipo = 'Conto Economico'
-                                
-                                if description or code:
-                                    data.append({
-                                        'Codice': code,
-                                        'Descrizione': description[:100],
-                                        'Tipo': tipo,
-                                        'Amount': amount
-                                    })
+                            if not amounts:
+                                continue
+                            
+                            # Estrai descrizione
+                            code_pos = line.find(code)
+                            desc_start = code_pos + len(code)
+                            description = line[desc_start:].strip()
+                            description = re.sub(r'[\d.,\s]+$', '', description).strip()
+                            
+                            if not description or len(description) < 3:
+                                continue
+                            
+                            # Determina tipo e segno
+                            first_digits = code.split('/')[0]
+                            tipo = 'Stato Patrimoniale'
+                            segno = 1
+                            
+                            if int(first_digits) >= 50:
+                                tipo = 'Conto Economico'
+                            
+                            # Gestione segni
+                            if tipo == 'Stato Patrimoniale':
+                                if first_digits in ['04', '07', '28', '29', '40', '41', '42', '43', '48', '49']:
+                                    segno = -1
+                            else:
+                                if int(first_digits) < 80:
+                                    segno = -1
+                            
+                            amount = amounts[-1] * segno
+                            
+                            data.append({
+                                'Codice': code,
+                                'Descrizione': description[:100],
+                                'Tipo': tipo,
+                                'Amount': amount
+                            })
         
-        # Rimuovi duplicati
+        # Crea DataFrame
         df = pd.DataFrame(data)
+        
         if not df.empty:
+            # Rimozione duplicati più aggressiva
+            # Prima rimuovi duplicati esatti su Codice+Descrizione
             df = df.drop_duplicates(subset=['Codice', 'Descrizione'], keep='first')
+            
+            # Poi rimuovi anche duplicati solo su Codice (tieni quello con descrizione più lunga)
+            df['desc_len'] = df['Descrizione'].str.len()
+            df = df.sort_values('desc_len', ascending=False)
+            df = df.drop_duplicates(subset=['Codice'], keep='first')
+            df = df.drop(columns=['desc_len'])
+            
             # Ordina per codice
             df = df.sort_values('Codice', na_position='last')
+            
+            # Verifica quadratura
+            totale = df['Amount'].sum()
+            print(f"✅ Estratti {len(df)} conti - Quadratura: {totale:.2f}€")
         
         return df
         
