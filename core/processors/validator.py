@@ -75,8 +75,8 @@ class Validator:
         if len(df) < 5:
             warnings.append(f"Solo {len(df)} conti trovati, sembra poco")
 
-        # Check colonne richieste
-        required_columns = ['Codice', 'Descrizione', 'Tipo', 'Amount']
+        # Check colonne richieste (Tipo viene aggiunto dopo dal classificatore)
+        required_columns = ['Codice', 'Descrizione', 'Amount']
         missing_columns = [col for col in required_columns if col not in df.columns]
 
         if missing_columns:
@@ -148,30 +148,39 @@ class Validator:
                 warnings.append(f"{len(outliers)} conti con importi molto elevati (possibili errori)")
                 stats['outliers'] = outliers[['Codice', 'Descrizione', 'Amount']].to_dict('records')[:3]
 
-        # Check distribuzione SP/CE
-        sp_count = len(df[df['Tipo'] == 'Stato Patrimoniale'])
-        ce_count = len(df[df['Tipo'] == 'Conto Economico'])
-        other_count = len(df) - sp_count - ce_count
+        # Check distribuzione SP/CE (solo se già classificato)
+        if 'Tipo' in df.columns:
+            sp_count = len(df[df['Tipo'] == 'Stato Patrimoniale'])
+            ce_count = len(df[df['Tipo'] == 'Conto Economico'])
+            other_count = len(df) - sp_count - ce_count
 
-        if other_count > 0:
-            warnings.append(f"{other_count} conti senza classificazione SP/CE")
+            if other_count > 0:
+                warnings.append(f"{other_count} conti senza classificazione SP/CE")
 
-        stats['distribution'] = {
-            'sp': sp_count,
-            'ce': ce_count,
-            'other': other_count,
-            'total': len(df),
-        }
+            stats['distribution'] = {
+                'sp': sp_count,
+                'ce': ce_count,
+                'other': other_count,
+                'total': len(df),
+            }
 
-        # Check bilanciamento (almeno 20% di ogni tipo)
-        if sp_count > 0 and ce_count > 0:
-            ratio_sp = sp_count / len(df)
-            ratio_ce = ce_count / len(df)
+            # Check bilanciamento (almeno 20% di ogni tipo)
+            if sp_count > 0 and ce_count > 0:
+                ratio_sp = sp_count / len(df)
+                ratio_ce = ce_count / len(df)
 
-            if ratio_sp < 0.2:
-                warnings.append("Pochi conti Stato Patrimoniale rispetto al totale")
-            if ratio_ce < 0.2:
-                warnings.append("Pochi conti Conto Economico rispetto al totale")
+                if ratio_sp < 0.2:
+                    warnings.append("Pochi conti Stato Patrimoniale rispetto al totale")
+                if ratio_ce < 0.2:
+                    warnings.append("Pochi conti Conto Economico rispetto al totale")
+        else:
+            # Non ancora classificato, aggiungi stats parziali
+            stats['distribution'] = {
+                'sp': 0,
+                'ce': 0,
+                'other': len(df),
+                'total': len(df),
+            }
 
         # Tutto OK se non ci sono warning critici
         is_valid = True
@@ -250,9 +259,10 @@ class DataCleaner:
         df['Descrizione'] = df['Descrizione'].str.strip()
         df['Descrizione'] = df['Descrizione'].str[:100]  # Max 100 caratteri
 
-        # Normalizza Tipo
-        df['Tipo'] = df['Tipo'].fillna('Non Classificato')
-        df['Tipo'] = df['Tipo'].str.strip()
+        # Normalizza Tipo (solo se esiste - viene aggiunto dal classificatore)
+        if 'Tipo' in df.columns:
+            df['Tipo'] = df['Tipo'].fillna('Non Classificato')
+            df['Tipo'] = df['Tipo'].str.strip()
 
         # Normalizza Codice
         df['Codice'] = df['Codice'].astype(str).str.strip()
