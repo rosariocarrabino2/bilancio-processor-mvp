@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Bilancio Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo-icon {
+            font-size: 35px;
+        }
+        
+        .logo-text h1 {
+            font-size: 22px;
+            color: #333;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 60px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: #fafafa;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .upload-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #c33;
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #3c3;
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .download-btn {
+            width: 100%;
+            padding: 20px;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <div class="logo-text">
+                    <h1>Bilancio Processor MVP</h1>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="window.location.reload()">Utente connesso</button>
+                <a href="/logout" class="btn btn-danger">Esci</a>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Carica il tuo bilancino di verifica</h2>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Trascina qui il tuo file o clicca per selezionarlo</div>
+                <div class="upload-hint">PDF o Excel • Max 10MB</div>
+            </div>
+            
+            <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls">
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Elaborazione in corso...</p>
+            </div>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="results" id="results">
+                <div class="success-message" style="display: block;">
+                    ✅ File elaborato con successo!
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotal">-</div>
+                        <div class="stat-label">Conti Totali</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statSP">-</div>
+                        <div class="stat-label">Stato Patrimoniale</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statCE">-</div>
+                        <div class="stat-label">Conto Economico</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statQuadra">-</div>
+                        <div class="stat-label">Bilancio</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary download-btn" id="downloadBtn">
+                    📥 Scarica Excel Elaborato
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorMessage = document.getElementById('errorMessage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        let currentFileId = null;
+        
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        // Download button
+        downloadBtn.addEventListener('click', () => {
+            if (currentFileId) {
+                window.location.href = '/download/' + currentFileId;
+            }
+        });
+        
+        function handleFile(file) {
+            // Reset UI
+            uploadArea.style.display = 'none';
+            results.style.display = 'none';
+            errorMessage.style.display = 'none';
+            loading.style.display = 'block';
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Upload
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.success) {
+                    // Show results
+                    currentFileId = data.file_id;
+                    results.style.display = 'block';
+                    
+                    // Update stats
+                    document.getElementById('statTotal').textContent = data.stats.total_conti;
+                    document.getElementById('statSP').textContent = data.stats.conti_sp;
+                    document.getElementById('statCE').textContent = data.stats.conti_ce;
+                    document.getElementById('statQuadra').textContent = data.stats.quadra ? '✓ Quadra' : '✗ Non quadra';
+                } else {
+                    // Show error
+                    errorMessage.textContent = '❌ Errore durante l\'elaborazione: ' + data.error;
+                    errorMessage.style.display = 'block';
+                    uploadArea.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                errorMessage.textContent = '❌ Errore di connessione: ' + error.message;
+                errorMessage.style.display = 'block';
+                uploadArea.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
