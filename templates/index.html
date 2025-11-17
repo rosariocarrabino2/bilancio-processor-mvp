@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilancio Processor - MVP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>📊 Bilancio Processor</h1>
+            <p class="subtitle">Trasforma il tuo bilancino di verifica in Excel pulito</p>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Upload Area -->
+            <div id="uploadArea" class="upload-area">
+                <div class="upload-icon">📁</div>
+                <h2>Trascina qui il tuo file</h2>
+                <p>oppure</p>
+                <button id="selectFileBtn" class="btn btn-primary">Seleziona File</button>
+                <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls" hidden>
+                <p class="file-info">Formati supportati: PDF, Excel (XLS, XLSX)</p>
+            </div>
+
+            <!-- File Info (hidden initially) -->
+            <div id="fileInfo" class="file-info-box" style="display: none;">
+                <div class="file-details">
+                    <span id="fileName" class="file-name"></span>
+                    <span id="fileSize" class="file-size"></span>
+                </div>
+                <button id="removeFileBtn" class="btn-icon" title="Rimuovi file">✕</button>
+            </div>
+
+            <!-- Process Button -->
+            <button id="processBtn" class="btn btn-success btn-large" style="display: none;">
+                🚀 Processa Bilancino
+            </button>
+
+            <!-- Progress Area -->
+            <div id="progressArea" style="display: none;">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <p id="progressText" class="progress-text">Processing...</p>
+            </div>
+
+            <!-- Result Area -->
+            <div id="resultArea" class="result-area" style="display: none;">
+                <div class="success-icon">✅</div>
+                <h3>Bilancino processato con successo!</h3>
+                <div id="resultDetails" class="result-details"></div>
+                <button id="downloadBtn" class="btn btn-primary btn-large">
+                    ⬇️ Download Excel
+                </button>
+                <button id="newProcessBtn" class="btn btn-secondary">
+                    🔄 Processa un altro file
+                </button>
+            </div>
+
+            <!-- Error Area -->
+            <div id="errorArea" class="error-area" style="display: none;">
+                <div class="error-icon">❌</div>
+                <h3>Errore nel processing</h3>
+                <p id="errorMessage" class="error-message"></p>
+                <button id="retryBtn" class="btn btn-secondary">
+                    🔄 Riprova
+                </button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>MVP - Versione 1.0 | Powered by AI</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

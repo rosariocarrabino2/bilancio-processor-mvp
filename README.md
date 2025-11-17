@@ -1,173 +1,138 @@
-# Bilancio Processor MVP v2.0
+# 📊 Bilancio Processor MVP
 
-Sistema robusto e modulare per l'elaborazione automatica di bilancini di verifica.
+**Automatizza l'analisi dei bilancini di verifica per banche d'investimento, società di consulenza e imprese.**
 
-## 🎯 Obiettivo
+## 🎯 Cosa fa
 
-Semplificare la vita a banche di investimento, società di consulenza e imprese trasformando bilancini di verifica grezzi (PDF/Excel) in fogli Excel puliti e lavorabili.
+Trasforma un bilancino di verifica grezzo (PDF o Excel) in un file Excel pulito e strutturato con:
 
-## ✨ Funzionalità
+### Sheet 1: "Bilancino Pulito"
+- **Codice Conto**: Codice del conto contabile
+- **Descrizione**: Descrizione del conto
+- **Tipo Voce**: SP (Stato Patrimoniale) o CE (Conto Economico)
+- **Importo**: Valore numerico del conto
 
-### Input Supportati
-- **PDF**: Bilancini in formato PDF (estrazione automatica con pdfplumber)
-- **Excel**: File .xlsx, .xls
-- **CSV**: File comma-separated values
+## 🚀 Quick Start
 
-### Output
-File Excel con 3 sheet:
+### 1. Requisiti
+- Python 3.8+
+- Account OpenAI (per API GPT)
 
-1. **Bilancino Pulito**: 4 colonne (Codice, Descrizione, Tipo, Amount)
-2. **Mapping**: 6 colonne (+ Cluster I e Cluster II per riclassificazioni future)
-3. **Headline**: Stato Patrimoniale e Conto Economico riclassificati
+### 2. Installazione
 
-### Processo
+```bash
+# Clona il repository
+git clone <repository-url>
+cd bilancio-processor-mvp
+
+# Installa dipendenze
+pip install -r requirements.txt
+
+# Configura variabili d'ambiente
+cp .env.example .env
+# Modifica .env e inserisci la tua OPENAI_API_KEY
 ```
-Upload → Parsing → Validazione → Classificazione → Quadratura → Excel Output
+
+### 3. Configurazione
+
+Crea un file `.env` nella root del progetto:
+
+```env
+SECRET_KEY=your-secret-key-here
+OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENAI_MODEL=gpt-4-turbo-preview
 ```
+
+**IMPORTANTE**: Devi avere una API Key di OpenAI attiva. Ottienila su [platform.openai.com](https://platform.openai.com/api-keys)
+
+### 4. Avvio
+
+```bash
+python app.py
+```
+
+Apri il browser su: **http://localhost:5000**
+
+## 💡 Come si usa
+
+1. **Carica il file**: Trascina o seleziona il tuo bilancino di verifica (PDF o Excel)
+2. **Processa**: Click su "Processa Bilancino"
+3. **Scarica**: Download automatico dell'Excel pulito
+
+**È semplicissimo!** 🎉
 
 ## 🏗️ Architettura
 
 ```
 bilancio-processor-mvp/
-├── app.py                      # Flask application
-├── config.py                   # Configurazione centralizzata
-├── requirements.txt
+├── app.py                    # Flask app principale
+├── config.py                 # Configurazioni
+├── requirements.txt          # Dipendenze Python
+├── .env                      # Variabili d'ambiente (da creare)
 │
-├── core/                       # Business Logic
-│   ├── bilancio_processor.py  # Orchestratore principale
-│   ├── parsers/               # Parser multi-formato
-│   │   ├── base_parser.py
-│   │   ├── pdf_parser.py
-│   │   └── excel_parser.py
-│   ├── processors/            # Elaborazione dati
-│   │   ├── validator.py       # Validazione multi-livello
-│   │   └── classifier.py      # Classificazione SP/CE
-│   ├── generators/
-│   │   └── excel_generator.py
-│   └── utils/
-│       ├── logger.py          # Logging dettagliato
-│       └── quadratura.py      # Sistema quadratura avanzato
+├── services/
+│   ├── parser.py            # Parsing PDF/Excel
+│   ├── processor.py         # AI processing (GPT)
+│   └── excel_generator.py   # Generazione Excel output
 │
-├── templates/                 # HTML templates
-├── uploads/                   # File caricati
-├── outputs/                   # Excel generati
-└── logs/                      # Log elaborazioni
+├── templates/
+│   └── index.html           # UI web
+│
+├── static/
+│   ├── css/style.css        # Styling
+│   └── js/app.js            # Frontend logic
+│
+├── uploads/                 # File caricati dagli utenti
+├── outputs/                 # Excel generati
+└── logs/                    # Log applicazione
 ```
 
-## 🚀 Installazione
+## 🔧 Tecnologie
 
-```bash
-# 1. Clone repository
-git clone <repo-url>
-cd bilancio-processor-mvp
+- **Backend**: Flask (Python)
+- **AI**: OpenAI GPT-4
+- **Parsing**: pdfplumber, pandas, openpyxl
+- **Frontend**: HTML5, CSS3, JavaScript vanilla
 
-# 2. Installa dipendenze
-pip install -r requirements.txt
+## 🎨 Features
 
-# 3. Avvia server
-python app.py
-```
+- ✅ Interfaccia drag & drop intuitiva
+- ✅ Supporto PDF e Excel (XLS, XLSX)
+- ✅ Parsing intelligente con AI
+- ✅ Gestione formati variabili
+- ✅ Classificazione automatica SP/CE
+- ✅ Excel output pulito e formattato
+- ✅ Validazione dati
+- ✅ Logging completo
 
-L'applicazione sarà disponibile su: http://localhost:5000
+## 🔮 Roadmap (Future)
 
-## 🔐 Credenziali Default
-
-- **Username**: `admin`
-- **Password**: `BilancioMVP2024!`
-
-## 📋 Validazioni Implementate
-
-### Livello 1: File
-- Formato supportato
-- Dimensione max 10MB
-- File non vuoto
-
-### Livello 2: Struttura Dati
-- Colonne richieste presenti
-- Valori numerici validi
-- Dati sufficienti
-
-### Livello 3: Business Rules
-- Codici contabili validi
-- Descrizioni complete
-- Importi coerenti
-- Distribuzione SP/CE bilanciata
-
-## 🎨 Sistema di Quadratura
-
-Verifica automatica con tolleranza dinamica:
-
-- **Tolleranza assoluta**: 1,00€
-- **Tolleranza relativa**: 0,01% del totale attività
-- **Tolleranza dinamica**: max(assoluta, relativa)
-
-Report dettagliato:
-- Stato Patrimoniale (Attività vs Passività)
-- Conto Economico (Ricavi vs Costi)
-- Quadratura generale (SP + CE = 0)
-
-## 📊 Classificazione Automatica
-
-### Stato Patrimoniale (01-49)
-- **Attività**: positive
-- **Fondi ammortamento** (04, 07): negative
-- **Patrimonio Netto** (28, 29): negative
-- **Passività** (40-49): negative
-
-### Conto Economico (50-99)
-- **Costi** (50-79): negative
-- **Ricavi** (80-99): positive
-
-## 🔧 Configurazione
-
-Modificare `config.py` per personalizzare:
-
-- Pattern regex per codici conti
-- Regole classificazione
-- Tolleranze quadratura
-- Stili output Excel
-- Logging level
-
-## 📝 Log
-
-I log vengono salvati in `logs/bilancio_YYYYMMDD.log` con:
-- Timestamp
-- Livello (INFO/WARNING/ERROR)
-- Dettagli elaborazione
-- Statistiche
-
-Retention: 30 giorni (configurabile)
+- [ ] **Sheet 2**: Mapping con Cluster I e II
+- [ ] **Sheet 3**: Headline SP e CE
+- [ ] **Integrazione AIDA**: Recupero bilanci ufficiali
+- [ ] **Multi-utente**: Autenticazione e gestione utenti
+- [ ] **Batch processing**: Processa multipli file
+- [ ] **Export multipli**: JSON, CSV, PDF
 
 ## 🐛 Troubleshooting
 
-### Errore "Nessun dato estratto"
-- Verificare formato file
-- Controllare struttura bilancino
-- Consultare log per dettagli
+### Errore: "OPENAI_API_KEY non configurata"
+→ Crea il file `.env` e inserisci la tua API key OpenAI
 
-### Bilancio non quadra
-- Verificare warning nel report
-- Controllare classificazione conti
-- Verificare segni importi
+### Errore: "Formato file non supportato"
+→ Usa solo file PDF, XLS o XLSX
 
-### Parser non riconosce colonne Excel
-- Verificare nomi colonne (deve contenere: codice/descrizione/importo)
-- Provare rinominare colonne
-- Consultare log per auto-detection
+### Errore nel parsing
+→ Verifica che il bilancino contenga dati tabellari strutturati
 
-## 🔜 Roadmap v2.1
+## 📝 License
 
-- [ ] Integrazione API AIDA per bilanci ufficiali
-- [ ] Mapping automatico Cluster I/II
-- [ ] Preview interattiva pre-download
-- [ ] Supporto batch processing
-- [ ] Export PDF report
-- [ ] API REST
+MIT License - Vedi LICENSE file
 
-## 📄 License
+## 👨‍💻 Autore
 
-MIT
+Sviluppato per semplificare la vita a professionisti della finanza
 
-## 👤 Autore
+---
 
-Progetto MVP per semplificazione analisi finanziaria
+**Pronto per iniziare? Avvia l'app e carica il tuo primo bilancino! 🚀**
